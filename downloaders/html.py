@@ -1,8 +1,8 @@
 import uuid
 import requests
 
-url = "https://amlo.presidente.gob.mx/30-09-23"  # Replace with the actual URL
-output_filename = "amlo.html"  # Desired output filename
+# url = "https://amlo.presidente.gob.mx/30-09-23"  # Replace with the actual URL
+# output_filename = "amlo.html"  # Desired output filename
 
 
 def download_html(url, output_filename):
