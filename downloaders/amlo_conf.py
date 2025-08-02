@@ -1,5 +1,8 @@
+import time
+import os
 import uuid
 import requests
+from bs4 import BeautifulSoup
 import calendar
 import datetime
 import re
@@ -7,7 +10,7 @@ from loguru import logger
 
 BASE_URL = "https://amlo.presidente.gob.mx/"  # Replace with the actual URL
 BASE_FOLDER = "/Volumes/GASTONS_SSD01/amlo/conferencias/"  # Folder to save downloaded files
-LOG_FILE = BASE_FOLDER + "_amlo_conferencias.log"
+LOG_FILE = BASE_FOLDER + "amlo_conferencias.log"
 
 
 # This function should return a list of days in the specified month and year.
@@ -42,49 +45,95 @@ def save_html(url, output_filename):
 
     # Get the HTML content from the URL
     try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for bad status codes
+        resp = requests.get(url)
+        resp.raise_for_status()  # Raise an exception for bad status codes
     except requests.exceptions.HTTPError as e:
-        logger.error(f"HTTP error occurred: {e}")
+        raise ValueError(f"HTTP error occurred while fetching {url}: {e}")
+
+    # Check if the resp is valid and not a maintenance page
+    if resp.status_code != 200:
+        raise ValueError(f"Failed to retrieve {url}: Status code {resp.status_code}")
+
+    # Parse the HTML content using BeautifulSoup
+    try:
+        soup = BeautifulSoup(resp.text, "html.parser")
+    except Exception as e:
+        raise ValueError(f"Error parsing HTML content at {url}: {e}")
+
+    # Check if the response contains a valid HTML structure
+    if not soup or not soup.find("html"):
+        raise ValueError(f"Invalid HTML content at {url}")
+
+    # Check if the response contains a valid title
+    title_tag = soup.find('title')
+
+    # Check if the title contains a maintenance message
+    if title_tag.string.startswith("Sitio en mantenimiento"):
+        logger.info(f"Maintenance message found at {url}: {title_tag}")
         return
 
-    # Check if the response is valid and not a maintenance page
-    if response.status_code != 200:
-        logger.error(f"Failed to retrieve {url}: Status code {response.status_code}")
-        return
-
-    # Check if the response contains a maintenance message
-    if response.head('title').startswith('Sitio en Mantenimiento'):
-        logger.info(f"Unexpected content at {url}: {response.text[:100]}")
-        return
-
-    with open(output_filename, 'wb') as f:
-        f.write(response.content)
+    # Save the HTML content to the specified output filename
+    with open(output_filename, "wb") as f:
+        try:
+            f.write(soup.prettify().encode('utf-8'))
+        except Exception as e:
+            raise ValueError(f"Error saving HTML content to {output_filename}: {e}")
+        
         logger.info(f"Saved HTML content to {output_filename}")
 
     return
 
 
- # This function should download the HTML files for each day of the specified month and year.
-def download_conferencias(year: int, month: int):
+# This function should download the HTML files for each day of the specified month and year.
+def download_conferencias(base_folder: str, year: int, month: int):
     # Get the list of days in the specified month and year
     day_list = get_month_days(year, month)
     
     # Loop through the list of days and download the HTML files
     for day in day_list:
+        # Format the URL for the specific day
         url = f"{BASE_URL}{day}"
         # Format the date for the output filename
         conf_date = f"20{day[6:8]}_{day[3:5]}_{day[0:2]}"
         # Generate a unique identifier for the file
         conf_id = str(uuid.uuid4())
         # Create the output filename
-        output_filename = f"{BASE_FOLDER}amlo_conferencia_{conf_date}_{conf_id}.html"
-        print(output_filename)
-        save_html(url, output_filename)
+        output_filename = f"{base_folder}amlo_conferencia_{conf_date}_{conf_id}.html"
+        # Get the HTML content and save it
+        try:
+            logger.info(f"Downloading {url} to {output_filename}")
+            save_html(url, output_filename)
+        except Exception as e:
+            logger.error(f"Error downloading {url}: {e}")
+        # Sleep for a short time to avoid overwhelming the server
+        time.sleep(15)  # Adjust the sleep time as needed
+    return
 
-# # Initialize logging
-# logger.add(LOG_FILE)
-# logger.info("New logging session started")
-# # Initialize the main function
-# start_download()
 
+
+logger.add(LOG_FILE)
+year = 2024
+current_month = 2
+end_month = 8
+
+while True:
+    # Set the base folder for the current year and month
+    folder = BASE_FOLDER + f"{year}/{current_month:02d}/"
+    # Create the base folder if it doesn't exist
+    os.makedirs(folder, exist_ok=True)
+
+    try:
+        # Example usage: download conferences for September 2024
+        download_conferencias(folder, year, current_month)  # Change the month and year as needed
+        break  # Exit the loop if successful
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+    
+    # Increment the month
+    current_month += 1
+    # Exit the loop if the month exceeds the end month
+    if current_month > end_month:
+        break
+    # Sleep before retrying
+    logger.info(f"Retrying in 2 minutes for month {current_month}...")
+    time.sleep(120)  # Wait before retrying
