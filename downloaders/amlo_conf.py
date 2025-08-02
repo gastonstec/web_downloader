@@ -5,11 +5,14 @@ import requests
 from bs4 import BeautifulSoup
 import calendar
 import datetime
-import re
 from loguru import logger
 
-BASE_URL = "https://amlo.presidente.gob.mx/"  # Replace with the actual URL
-BASE_FOLDER = "/Volumes/GASTONS_SSD01/amlo/conferencias/"  # Folder to save downloaded files
+# Constants
+# Base URL for the AMLO conferences
+BASE_URL = "https://amlo.presidente.gob.mx/"
+# Base folder where the HTML files will be saved
+BASE_FOLDER = "/Volumes/GASTONS_SSD01/amlo/conferencias/"
+# Log file for the downloader
 LOG_FILE = BASE_FOLDER + "amlo_conferencias.log"
 
 
@@ -29,9 +32,8 @@ def get_month_days(year: int, month: int) -> list:
         try:
             day_list.append(date.strftime("%d-%m-%y"))
         except Exception as e:
-            print(f"Error parsing date: {e}")
-            raise ValueError("Invalid date format")
-        
+            raise ValueError(f"Error parsing date: {e}")
+
         # Increment the date by one day
         date += datetime.timedelta(days=1)
         i += 1
@@ -40,7 +42,8 @@ def get_month_days(year: int, month: int) -> list:
     return day_list
 
 
-# This function should download the HTML content from the given URL and save it to the specified output filename.
+# This function should download the HTML content from the given
+# URL and save it to the specified output filename.
 def save_html(url, output_filename):
 
     # Get the HTML content from the URL
@@ -52,7 +55,9 @@ def save_html(url, output_filename):
 
     # Check if the resp is valid and not a maintenance page
     if resp.status_code != 200:
-        raise ValueError(f"Failed to retrieve {url}: Status code {resp.status_code}")
+        raise ValueError(
+            f"Failed to retrieve {url}: Status code {resp.status_code}"
+        )
 
     # Parse the HTML content using BeautifulSoup
     try:
@@ -75,20 +80,29 @@ def save_html(url, output_filename):
     # Save the HTML content to the specified output filename
     with open(output_filename, "wb") as f:
         try:
-            f.write(soup.prettify().encode('utf-8'))
+            f.write(
+                soup.prettify()
+                .encode('utf-8')
+            )
         except Exception as e:
-            raise ValueError(f"Error saving HTML content to {output_filename}: {e}")
-        
+            raise ValueError(
+                f"Error saving HTML content to {output_filename}: {e}"
+            )
+
         logger.info(f"Saved HTML content to {output_filename}")
 
     return
 
 
-# This function should download the HTML files for each day of the specified month and year.
+# This function should download the HTML files for each day of
+# the specified month and year.
 def download_conferencias(base_folder: str, year: int, month: int):
     # Get the list of days in the specified month and year
-    day_list = get_month_days(year, month)
-    
+    try:
+        day_list = get_month_days(year, month)
+    except ValueError as e:
+        raise ValueError(f"Error getting days for {year}-{month}: {e}")
+
     # Loop through the list of days and download the HTML files
     for day in day_list:
         # Format the URL for the specific day
@@ -98,7 +112,8 @@ def download_conferencias(base_folder: str, year: int, month: int):
         # Generate a unique identifier for the file
         conf_id = str(uuid.uuid4())
         # Create the output filename
-        output_filename = f"{base_folder}amlo_conferencia_{conf_date}_{conf_id}.html"
+        output_filename = \
+            f"{base_folder}amlo_conferencia_{conf_date}_{conf_id}.html"
         # Get the HTML content and save it
         try:
             logger.info(f"Downloading {url} to {output_filename}")
@@ -110,8 +125,10 @@ def download_conferencias(base_folder: str, year: int, month: int):
     return
 
 
-
+# Configure the logger
 logger.add(LOG_FILE)
+
+# Set the year and month for which to download the conferences
 year = 2024
 current_month = 2
 end_month = 8
@@ -123,17 +140,18 @@ while True:
     os.makedirs(folder, exist_ok=True)
 
     try:
-        # Example usage: download conferences for September 2024
-        download_conferencias(folder, year, current_month)  # Change the month and year as needed
+        # Download the conferences for the specified month and year
+        download_conferencias(folder, year, current_month)
         break  # Exit the loop if successful
     except Exception as e:
         logger.error(f"An error occurred: {e}")
-    
+
     # Increment the month
     current_month += 1
     # Exit the loop if the month exceeds the end month
     if current_month > end_month:
         break
+
     # Sleep before retrying
     logger.info(f"Retrying in 2 minutes for month {current_month}...")
     time.sleep(120)  # Wait before retrying
