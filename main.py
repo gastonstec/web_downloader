@@ -6,9 +6,9 @@ def amlo_main():
     base_url = config.AMLO_BASE_URL
     base_folder = config.AMLO_CONFERENCIAS_FOLDER
     log_file = config.AMLO_CONFERENCIAS_LOG_FILE
-    amlo_conferencias.start_downloader(
+    amlo_conferencias.start_html_downloader(
         base_url=base_url,
-        year=2019,
+        year=2021,
         start_month=1,
         end_month=12,
         base_folder=base_folder,

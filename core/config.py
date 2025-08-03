@@ -6,6 +6,9 @@ AMLO_CONFERENCIAS_FOLDER: str = "/Volumes/GASTONS_SSD01/amlo/conferencias/"
 AMLO_CONFERENCIAS_LOG_FILE: str = (
     AMLO_CONFERENCIAS_FOLDER + "amlo_conferencias.log"
 )
+AMLO_CONFERENCIAS_LOG_FILE_MP3: str = (
+    AMLO_CONFERENCIAS_FOLDER + "amlo_conferencias_mp3.log"
+)
 # Sleep times for the downloader
 PAGE_SLEEP_TIME: int = 3  # seconds
 MONTH_SLEEP_TIME: int = 60  # seconds

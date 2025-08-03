@@ -1,0 +1,155 @@
+import requests
+from bs4 import BeautifulSoup
+import calendar
+import datetime
+
+
+# This function should return a list of days
+def get_month_days(year: int, month: int) -> list:
+    # Initialize an empty list to hold the formatted days
+    day_list: list = []
+    # Get the number of days in the month
+    num_days = calendar.monthrange(year, month)[1]
+    # Get the first day of the month
+    date = datetime.date(year=year, month=month, day=1)
+
+    # Loop through the number of days in the month
+    i = 0
+    while i < num_days:
+        # Format the date as "dd-mm-yy" and append to the list
+        try:
+            day_list.append(date.strftime("%d-%m-%y"))
+        except Exception as e:
+            raise ValueError(f"Error parsing date: {e}")
+
+        # Increment the date by one day
+        date += datetime.timedelta(days=1)
+        i += 1
+
+    # Return the list of formatted days
+    return day_list
+
+
+# This function should download the HTML content from the given
+# URL and save it to the specified output filename.
+def save_html(url, output_filename):
+
+    # Get the HTML content from the URL
+    try:
+        resp = requests.get(url)
+        resp.raise_for_status()  # Raise an exception for bad status codes
+    except requests.exceptions.HTTPError as e:
+        raise ValueError(f"HTTP error occurred while fetching {url}: {e}")
+
+    # Check if the resp is valid and not a maintenance page
+    if resp.status_code != 200:
+        raise ValueError(
+            f"Failed to retrieve {url}: Status code {resp.status_code}"
+        )
+
+    # Parse the HTML content using BeautifulSoup
+    try:
+        soup = BeautifulSoup(resp.text, "html.parser")
+    except Exception as e:
+        raise ValueError(f"Error parsing HTML content at {url}: {e}")
+
+    # Check if the response contains a valid HTML structure
+    if not soup or not soup.find("html"):
+        raise ValueError(f"Invalid HTML content at {url}")
+
+    # Check if the response contains a valid title
+    title_tag = soup.find('title')
+
+    # Check if the title contains a maintenance message
+    if title_tag.string.startswith("Sitio en mantenimiento"):
+        raise ValueError(f"Maintenance message found at {url}: {title_tag}")
+        return
+
+    # Save the HTML content to the specified output filename
+    with open(output_filename, "wb") as f:
+        try:
+            f.write(
+                soup.prettify()
+                .encode('utf-8')
+            )
+        except Exception as e:
+            raise ValueError(
+                f"Error saving HTML content to {output_filename}: {e}"
+            )
+    return
+
+
+# This function should download the HTML content from the given
+# URL and save it to the specified output filename.
+def save_mp3(url, output_filename):
+    # Open the HTML file from the given URL
+    try:
+        with open(url, "r") as fp:
+            soup = BeautifulSoup(fp, 'html.parser')
+    except Exception as e:
+        raise ValueError(f"Error parsing HTML content at {url}: {e}")
+
+    # Check if the response contains a valid HTML structure
+    if not soup or not soup.find("html"):
+        raise ValueError(f"Invalid HTML content at {url}")
+
+    # Get the MP3 content from the URL
+    audio_tag = soup.find("audio", {"controls": "controls"})
+    if not audio_tag:
+        raise ValueError(f"No audio tag found in the HTML content at {url}")
+    mp3_src = audio_tag.get("src") if audio_tag else None
+    if not mp3_src:
+        raise ValueError(f"No MP3 source found in the HTML content at {url}")
+
+    # Get the MP3 content from the URL
+    try:
+        resp = requests.get(mp3_src, stream=True)
+        # Raise an exception for bad status codes
+        resp.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        raise ValueError(f"HTTP error occurred while fetching {mp3_src}: {e}")
+
+    # Check if the resp is valid and not a maintenance page
+    if resp.status_code != 200:
+        raise ValueError(
+            f"Failed to retrieve {mp3_src}: Status code {resp.status_code}"
+        )
+
+    # Check if the response contains a valid MP3 structure
+    if (
+        not resp.content or
+        not resp.headers.get("Content-Type", "").startswith("audio/mpeg")
+    ):
+        raise ValueError(f"Invalid MP3 content at {url}")
+
+    # Save the MP3 content to the specified output filename
+    try:
+        with open(output_filename, "wb") as f:
+            try:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                return
+            except Exception as e:
+                raise ValueError(
+                    f"Error saving MP3 content to {output_filename}: {e}"
+                )
+    except Exception as e:
+        raise ValueError(f"Error saving MP3 content to {output_filename}: {e}")
+    return
+
+
+my_url = (
+    "/Volumes/GASTONS_SSD01/amlo/conferencias/2024/09/"
+    "amlo_conferencia_2024_09_13_aeeaced0-6123-4483-b1c0-c15426e2c20a.html"
+)
+output_filename = (
+    "/Volumes/GASTONS_SSD01/amlo/conferencias/2024/09/"
+    "amlo_conferencia_2024_09_13_aeeaced0-6123-4483-b1c0-c15426e2c20a.mp3"
+)
+
+try:
+    # Example usage of save_mp3 function
+    print("Downloading MP3...")
+    save_mp3(my_url, output_filename)
+except Exception as e:
+    print(f"Error downloading {my_url}: {e}")
