@@ -1,12 +1,24 @@
-import uuid
-from downloaders.html import download_html
+from core import config
+from downloaders import amlo_conf as amlo_conferencias
 
 
-target_directory = "/Volumes/GASTONS_SSD01/amlo/conferencias/"
-url = "https://amlo.presidente.gob.mx/25-09-21"
+def amlo_main():
+    base_url = config.AMLO_BASE_URL
+    base_folder = config.AMLO_CONFERENCIAS_FOLDER
+    log_file = config.AMLO_CONFERENCIAS_LOG_FILE
+    amlo_conferencias.start_downloader(
+        base_url=base_url,
+        year=2019,
+        start_month=1,
+        end_month=12,
+        base_folder=base_folder,
+        log_file=log_file
+    )
+
+
+def main():
+    amlo_main()
+
 
 if __name__ == "__main__":
-    print("Starting download...")
-    output_filename = str(uuid.uuid4()) + "_amlo.html"  # Ensure the output filename is set
-    download_html(url, target_directory + output_filename)
-    print("Download complete.")
+    main()
